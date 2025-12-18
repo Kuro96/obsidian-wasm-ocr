@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, master]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -34,7 +38,6 @@ jobs:
         uses: mymindstorm/setup-emsdk@v11
         with:
           version: 3.1.50
-          actions-cache-folder: 'emsdk-cache'
 
       - name: Install Plugin Dependencies
         working-directory: src/plugin
@@ -51,13 +54,13 @@ jobs:
           rm -rf dist/obsidian-wasm-ocr/models
 
       - name: Archive Plugin Code (No Models)
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: obsidian-wasm-ocr
           path: dist/obsidian-wasm-ocr/
 
       - name: Archive OCR Models
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ocr-models
           path: assets/models/
