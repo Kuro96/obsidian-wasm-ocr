@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'yarn'
+          cache-dependency-path: 'src/plugin/yarn.lock'
+
+      - name: Setup Python & Pre-commit
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Run Pre-commit Hooks
+        run: |
+          pip install pre-commit
+          pre-commit run --all-files
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v11
+        with:
+          version: 3.1.50
+          actions-cache-folder: 'emsdk-cache'
+
+      - name: Install Plugin Dependencies
+        working-directory: src/plugin
+        run: yarn install
+
+      - name: Build Plugin (Wasm + TS)
+        run: |
+          chmod +x scripts/build.sh
+          ./scripts/build.sh plugin
+
+      - name: Prepare Artifacts
+        run: |
+          # Remove models from the distribution package to keep it lightweight
+          rm -rf dist/obsidian-wasm-ocr/models
+
+      - name: Archive Plugin Code (No Models)
+        uses: actions/upload-artifact@v3
+        with:
+          name: obsidian-wasm-ocr
+          path: dist/obsidian-wasm-ocr/
+
+      - name: Archive OCR Models
+        uses: actions/upload-artifact@v3
+        with:
+          name: ocr-models
+          path: assets/models/

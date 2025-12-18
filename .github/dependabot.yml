@@ -1,0 +1,32 @@
+# To get started with Dependabot version updates, you'll need to specify which
+# package ecosystems to update and where the package manifests are located.
+# Please see the documentation for all configuration options:
+# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+
+version: 2
+updates:
+  # 1. Maintain NPM dependencies for the Obsidian Plugin
+  - package-ecosystem: 'npm'
+    directory: '/src/plugin' # 指向 package.json 所在目录
+    schedule:
+      interval: 'weekly' # 每周检查一次，避免由于频繁更新造成的干扰
+      day: 'monday'
+    # 分组策略：将所有非主要版本的更新合并为一个 PR
+    groups:
+      dependencies:
+        patterns:
+          - '*'
+    # 保持主要版本不变，避免自动合并破坏性变更 (Breaking Changes)
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+
+  # 2. Maintain GitHub Actions versions (CI/CD)
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'monthly' # Actions 不需要更新得太频繁
+    groups:
+      actions:
+        patterns:
+          - '*'

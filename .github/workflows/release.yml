@@ -1,0 +1,79 @@
+name: Release Plugin
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on tags like v1.0.0
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    # Needs permission to write releases
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'yarn'
+          cache-dependency-path: 'src/plugin/yarn.lock'
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v11
+        with:
+          version: 3.1.50
+
+      - name: Install Dependencies
+        working-directory: src/plugin
+        run: yarn install
+
+      - name: Build Plugin
+        run: |
+          chmod +x scripts/build.sh
+          ./scripts/build.sh plugin
+
+      # Move artifacts to a flat staging area for easier upload
+      - name: Stage Release Files
+        run: |
+          mkdir -p release_assets
+
+          # 0. Create FULL Package (with models)
+          # At this point, dist/obsidian-wasm-ocr still contains the models folder
+          cd dist/obsidian-wasm-ocr
+          zip -r ../../release_assets/obsidian-wasm-ocr-full.zip .
+          cd ../..
+
+          # 1. Clean up dist folder (Remove models to keep standard plugin lightweight)
+          rm -rf dist/obsidian-wasm-ocr/models
+
+          # 2. Plugin Core Files
+          cp dist/obsidian-wasm-ocr/main.js release_assets/
+          cp dist/obsidian-wasm-ocr/manifest.json release_assets/
+          if [ -f dist/obsidian-wasm-ocr/styles.css ]; then cp dist/obsidian-wasm-ocr/styles.css release_assets/; fi
+
+          # 3. Model Files (Source is reliable since it's in Git)
+          cp assets/models/* release_assets/
+
+          # 4. Create Standard Zip (No Models)
+          cd dist/obsidian-wasm-ocr
+          zip -r ../../release_assets/obsidian-wasm-ocr.zip .
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            release_assets/main.js
+            release_assets/manifest.json
+            release_assets/styles.css
+            release_assets/obsidian-wasm-ocr.zip
+            release_assets/obsidian-wasm-ocr-full.zip
+            release_assets/*.bin
+            release_assets/*.param
+          draft: false
+          prerelease: false
+          generate_release_notes: true

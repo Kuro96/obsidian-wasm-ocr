@@ -1,0 +1,21 @@
+# OS & Editors
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# C++ / CMake / Emscripten Build Artifacts
+build/
+.cache/
+.clangd
+
+# Node.js
+**/node_modules/
+npm-debug.log
+yarn-error.log
+
+# Project Build Output (Distributables)
+dist/
+
+output/
+*.pem

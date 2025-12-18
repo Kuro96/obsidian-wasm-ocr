@@ -1,0 +1,18 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v18.1.5 # Use a specific version of clang-format to ensure consistency
+    hooks:
+      - id: clang-format
+        types_or: [c++, c]
+        exclude: ^src/core/ppocrv5_dict\.h$
+        # args: [-style=file] # Default is usually sufficient if .clang-format exists
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        types_or: [javascript, jsx, ts, tsx, json, markdown, yaml]
+        # Exclude generated wasm artifacts or minified files if necessary
+        exclude: ^src/plugin/src/wasm/.*\.js$

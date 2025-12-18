@@ -1,0 +1,404 @@
+<!doctype html>
+<html>
+  <head>
+    <title>WASM OCR Test</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+      }
+      .container {
+        display: flex;
+        gap: 20px;
+      }
+      .column {
+        flex: 1;
+      }
+      #preview {
+        max-width: 100%;
+        border: 1px solid #ccc;
+      }
+      #output {
+        background: #f5f5f5;
+        padding: 10px;
+        white-space: pre-wrap;
+        height: 400px;
+        overflow: auto;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>WASM OCR Browser Test</h1>
+
+    <div class="container">
+      <div class="column">
+        <h3>1. Select Image</h3>
+        <input
+          type="file"
+          id="fileInput"
+          accept="image/*"
+          style="display: block; margin-bottom: 10px"
+        />
+        <button id="btnPaste" style="margin-bottom: 10px">
+          Paste from Clipboard
+        </button>
+        <button id="btnDefault" style="margin-bottom: 10px">
+          Use Default (test.jpg)
+        </button>
+        <br />
+        <div style="position: relative; display: inline-block">
+          <img
+            id="preview"
+            src="test.jpg"
+            crossorigin="anonymous"
+            style="max-width: 100%; display: block"
+          />
+          <canvas
+            id="overlay"
+            style="position: absolute; top: 0; left: 0; pointer-events: none"
+          ></canvas>
+        </div>
+        <br /><br />
+        <button id="btnRun" disabled>Loading WASM...</button>
+      </div>
+      <div class="column">
+        <h3>2. Result</h3>
+        <h4>Recognized Text:</h4>
+        <div
+          id="result-output"
+          style="
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 10px;
+            white-space: pre-wrap;
+            height: 200px;
+            overflow: auto;
+            margin-bottom: 10px;
+          "
+        >
+          Waiting for results...
+        </div>
+
+        <details open>
+          <summary
+            style="cursor: pointer; font-weight: bold; margin-bottom: 5px"
+          >
+            Debug Log
+          </summary>
+          <div
+            id="debug-output"
+            style="
+              background: #f5f5f5;
+              padding: 10px;
+              white-space: pre-wrap;
+              height: 200px;
+              overflow: auto;
+              font-size: 12px;
+              font-family: monospace;
+            "
+          >
+            Initializing...
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- Load the Test Module -->
+    <script src="test-wasm.js"></script>
+    <script>
+      if (typeof SharedArrayBuffer === "undefined") {
+        const warningDiv = document.createElement("div");
+        warningDiv.style.cssText =
+          "background: #ffebee; color: #c62828; padding: 15px; border: 1px solid #ef9a9a; margin-bottom: 20px; border-radius: 4px;";
+        warningDiv.innerHTML =
+          "<strong>Error: SharedArrayBuffer is not available.</strong><br/>" +
+          "This application requires multi-threading support (SharedArrayBuffer), which is only available in a <strong>Secure Context</strong> (localhost or HTTPS) and requires specific HTTP headers (COOP/COEP).<br/><br/>" +
+          "If you are accessing this via IP address (e.g., 10.x.x.x), please use <strong>localhost</strong> or configure your browser to treat this origin as secure (chrome://flags/#unsafely-treat-insecure-origin-as-secure).";
+        document.body.prepend(warningDiv);
+      }
+
+      let wasmModule = null;
+      const resultOutput = document.getElementById("result-output");
+      const debugOutput = document.getElementById("debug-output");
+      const btnRun = document.getElementById("btnRun");
+      const btnPaste = document.getElementById("btnPaste");
+      const btnDefault = document.getElementById("btnDefault");
+      const fileInput = document.getElementById("fileInput");
+      const img = document.getElementById("preview");
+      const overlay = document.getElementById("overlay");
+
+      function log(msg) {
+        debugOutput.textContent += msg + "\n";
+        debugOutput.scrollTop = debugOutput.scrollHeight;
+        console.log(msg);
+      }
+
+      // Initialize Module
+      createTestModule({
+        print: (text) => log("[C++ stdout] " + text),
+        printErr: (text) => log("[C++ stderr] " + text),
+        locateFile: (path, prefix) => {
+          if (path.includes("/")) {
+            return path.split("/").pop();
+          }
+          return path;
+        },
+      }).then((module) => {
+        wasmModule = module;
+        log("WASM Module Loaded.");
+
+        try {
+          log("Initializing OCR Engine (VFS)...");
+          // Models are preloaded, so just init
+          const res = wasmModule._init_ocr();
+
+          if (res === 0) {
+            log("OCR Engine Ready.");
+            log("Warming up...");
+            wasmModule._warmup_model();
+            log("Warmup done.");
+
+            // Cleanup VFS to free memory (~8-10MB)
+            log("Cleaning up VFS...");
+            wasmModule._cleanup_vfs();
+            log("VFS cleanup done. Memory released.");
+
+            btnRun.disabled = false;
+            btnRun.innerText = "Run OCR on Image";
+          } else {
+            log("Engine Init Failed: " + res);
+          }
+        } catch (e) {
+          log("Init Failed: " + e);
+        }
+      });
+
+      // File input handler
+      fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            img.src = e.target.result;
+            log(`Image loaded: ${file.name} (${file.size} bytes)`);
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+
+      // Paste from clipboard
+      btnPaste.onclick = async () => {
+        try {
+          const clipboardItems = await navigator.clipboard.read();
+          for (const item of clipboardItems) {
+            for (const type of item.types) {
+              if (type.startsWith("image/")) {
+                const blob = await item.getType(type);
+                const url = URL.createObjectURL(blob);
+                img.src = url;
+                log(`Image pasted from clipboard (${type})`);
+                return;
+              }
+            }
+          }
+          log("No image found in clipboard");
+        } catch (e) {
+          log(`Paste failed: ${e.message}`);
+        }
+      };
+
+      // Use default image
+      btnDefault.onclick = () => {
+        img.src = "test.jpg";
+        log("Using default test.jpg");
+      };
+
+      btnRun.onclick = async () => {
+        if (!wasmModule) return;
+
+        log("--- Starting OCR ---");
+
+        // 1. Draw image to canvas to get RGBA
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const { width, height, data } = imageData;
+        log(`Image Data: ${width}x${height} (${data.length} bytes)`);
+
+        // Validate image data
+        let sumR = 0,
+          sumG = 0,
+          sumB = 0,
+          sumA = 0;
+        for (let i = 0; i < Math.min(1000, data.length); i += 4) {
+          sumR += data[i];
+          sumG += data[i + 1];
+          sumB += data[i + 2];
+          sumA += data[i + 3];
+        }
+        const samples = Math.min(250, data.length / 4);
+        log(
+          `Sample ${samples} pixels - Avg: R=${(sumR / samples).toFixed(1)} G=${(sumG / samples).toFixed(1)} B=${(sumB / samples).toFixed(1)} A=${(sumA / samples).toFixed(1)}`,
+        );
+
+        // Setup Overlay Canvas
+        overlay.width = img.clientWidth;
+        overlay.height = img.clientHeight;
+        const oCtx = overlay.getContext("2d");
+        oCtx.clearRect(0, 0, overlay.width, overlay.height);
+        const scaleX = overlay.width / width;
+        const scaleY = overlay.height / height;
+
+        // 2. Allocate memory in WASM heap
+        // Note: We need enough memory for image + model inference
+        // Model is preloaded (~10MB), plus runtime needs (~20-50MB depending on inference)
+        const requiredBytes = data.length;
+        log(
+          `Allocating ${requiredBytes} bytes (${(requiredBytes / 1024 / 1024).toFixed(2)}MB) for image data...`,
+        );
+        const ptr = wasmModule._malloc(requiredBytes);
+        if (!ptr) {
+          throw new Error("Memory allocation failed! Not enough memory.");
+        }
+        log(`Memory allocated at address: 0x${ptr.toString(16)}`);
+
+        try {
+          // 3. Copy data to WASM memory
+          const startCopy = performance.now();
+
+          // Try methods from fastest to slowest
+          let copied = false;
+          let method = "";
+
+          // Method 1: Direct HEAPU8 access (Fastest & Standard)
+          if (wasmModule.HEAPU8) {
+            try {
+              wasmModule.HEAPU8.set(data, ptr);
+              copied = true;
+              method = "HEAPU8.set";
+            } catch (e) {
+              log(`HEAPU8.set failed: ${e.message}`);
+            }
+          }
+
+          // Method 2: writeArrayToMemory (Legacy Fallback)
+          if (!copied && wasmModule.writeArrayToMemory) {
+            try {
+              wasmModule.writeArrayToMemory(Array.from(data), ptr);
+              copied = true;
+              method = "writeArrayToMemory";
+            } catch (e) {
+              log(`writeArrayToMemory failed: ${e.message}`);
+            }
+          }
+
+          // Method 3: setValue loop (SLOW but reliable)
+          if (!copied) {
+            method = "setValue loop";
+            log(`Using setValue() loop (this will take a few seconds)...`);
+            const batchSize = 10000;
+            for (let i = 0; i < data.length; i++) {
+              wasmModule.setValue(ptr + i, data[i], "i8");
+              if (i > 0 && i % (batchSize * 10) === 0) {
+                log(`Progress: ${((i / data.length) * 100).toFixed(1)}%`);
+              }
+            }
+            copied = true;
+          }
+
+          const endCopy = performance.now();
+          log(
+            `Data copied via ${method} in ${(endCopy - startCopy).toFixed(0)}ms`,
+          );
+
+          // 4. Call Detect
+          const startTime = performance.now();
+          const resPtr = wasmModule._detect(ptr, width, height);
+          const endTime = performance.now();
+          log(`Inference Time: ${(endTime - startTime).toFixed(2)}ms`);
+
+          const jsonStr = wasmModule.UTF8ToString(resPtr);
+          const results = JSON.parse(jsonStr);
+
+          // Show clean text result
+          resultOutput.textContent = results
+            .map(
+              (r, i) =>
+                `[${i + 1}] ${r.text} (Prob: ${(r.prob * 100).toFixed(1)}%)`,
+            )
+            .join("\n");
+          log(`Found ${results.length} text regions.`);
+
+          // 5. Visualize
+          oCtx.lineWidth = 2;
+          oCtx.font = "16px Arial";
+
+          results.forEach((obj, idx) => {
+            const box = obj.box; // [[x,y], [x,y], [x,y], [x,y]]
+
+            // Draw Box
+            oCtx.strokeStyle = "red";
+            oCtx.beginPath();
+            oCtx.moveTo(box[0][0] * scaleX, box[0][1] * scaleY);
+            for (let i = 1; i < 4; i++) {
+              oCtx.lineTo(box[i][0] * scaleX, box[i][1] * scaleY);
+            }
+            oCtx.closePath();
+            oCtx.stroke();
+
+            // Draw Text
+            const text = `[${idx + 1}] ${obj.text}`;
+            const textWidth = oCtx.measureText(text).width;
+            const textHeight = 16;
+            const padding = 4;
+            const totalHeight = textHeight + padding * 2;
+
+            // Smart positioning
+            // Default: Top-Left of box
+            let tx = box[0][0] * scaleX;
+            let ty = box[0][1] * scaleY; // Top of box
+
+            // If too close to top edge, move text below box (use Bottom-Left)
+            let textAbove = true;
+            if (ty - totalHeight < 0) {
+              textAbove = false;
+              ty = box[3][1] * scaleY; // Bottom-Left y
+            }
+
+            // Keep within left/right bounds
+            if (tx + textWidth + padding * 2 > overlay.width) {
+              tx = overlay.width - textWidth - padding * 2;
+            }
+            if (tx < 0) {
+              tx = 0;
+            }
+
+            const bgY = textAbove ? ty - totalHeight : ty;
+            const textY = textAbove
+              ? ty - padding - 2
+              : ty + textHeight + padding - 2; // Approximate baseline adjustment
+
+            oCtx.fillStyle = "rgba(0,0,0,0.7)";
+            oCtx.fillRect(tx, bgY, textWidth + padding * 2, totalHeight);
+
+            oCtx.fillStyle = "white";
+            oCtx.fillText(text, tx + padding, textY);
+          });
+        } catch (e) {
+          log("Error: " + e);
+        } finally {
+          wasmModule._free(ptr);
+        }
+      };
+    </script>
+  </body>
+</html>

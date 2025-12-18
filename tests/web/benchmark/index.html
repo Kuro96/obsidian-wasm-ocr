@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WASM OCR Benchmark</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 900px; margin: 0 auto; }
+        h1 { text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        th { background: #f0f0f0; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; display: block; margin: 0 auto; }
+        .log { background: #f5f5f5; padding: 10px; font-family: monospace; height: 300px; overflow: auto; border: 1px solid #ccc; white-space: pre-wrap; }
+        .status-ready { color: green; font-weight: bold; }
+        .status-running { color: orange; font-weight: bold; }
+        .status-error { color: red; font-weight: bold; }
+        .bar-container { width: 100%; background-color: #f1f1f1; height: 20px; margin-top: 5px; }
+        .bar { height: 100%; background-color: #4CAF50; width: 0%; transition: width 0.3s; }
+    </style>
+</head>
+<body>
+    <h1>WASM OCR Performance Benchmark</h1>
+    <p style="text-align: center;">Comparing: Basic vs SIMD vs Threads vs SIMD+Threads</p>
+    
+    <div style="text-align: center; margin-bottom: 20px;">
+        <img id="testImage" src="../test.jpg" height="150" style="border: 1px solid #ccc;"/>
+        <p>Target Image: test.jpg (1280x720 approx)</p>
+    </div>
+
+    <button id="btnRun">Run Benchmark</button>
+    <br/>
+
+    <table id="resultsTable">
+        <thead>
+            <tr>
+                <th>Variant</th>
+                <th>Load Time</th>
+                <th>Warmup</th>
+                <th>Inference (Avg of 5)</th>
+                <th>Speedup (vs Basic)</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr id="row-basic">
+                <td>Basic (No SIMD/Threads)</td>
+                <td class="load">-</td>
+                <td class="warmup">-</td>
+                <td class="infer">-</td>
+                <td class="speedup">-</td>
+                <td class="status">Waiting</td>
+            </tr>
+            <tr id="row-simd">
+                <td>SIMD</td>
+                <td class="load">-</td>
+                <td class="warmup">-</td>
+                <td class="infer">-</td>
+                <td class="speedup">-</td>
+                <td class="status">Waiting</td>
+            </tr>
+            <tr id="row-threads">
+                <td>Threads (4 Cores)</td>
+                <td class="load">-</td>
+                <td class="warmup">-</td>
+                <td class="infer">-</td>
+                <td class="speedup">-</td>
+                <td class="status">Waiting</td>
+            </tr>
+            <tr id="row-simd-threads">
+                <td>SIMD + Threads</td>
+                <td class="load">-</td>
+                <td class="warmup">-</td>
+                <td class="infer">-</td>
+                <td class="speedup">-</td>
+                <td class="status">Waiting</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>Detailed Logs</h3>
+    <div class="log" id="log"></div>
+
+    <!-- Scripts for each variant -->
+    <script src="basic/test-wasm.js"></script>
+    <script src="simd/test-wasm.js"></script>
+    <script src="threads/test-wasm.js"></script>
+    <script src="simd-threads/test-wasm.js"></script>
+
+    <script>
+        const logDiv = document.getElementById('log');
+        function log(msg) {
+            logDiv.textContent += msg + "\n";
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(msg);
+        }
+
+        if (typeof SharedArrayBuffer === 'undefined') {
+            log("ERROR: SharedArrayBuffer not available. Threaded benchmarks will fail.");
+            const warning = document.createElement('div');
+            warning.style.color = 'red';
+            warning.style.textAlign = 'center';
+            warning.style.fontWeight = 'bold';
+            warning.innerText = "SharedArrayBuffer missing! Use localhost and correct headers.";
+            document.body.prepend(warning);
+        }
+
+        const img = document.getElementById('testImage');
+        let imageData = null;
+
+        // Prepare Image Data
+        img.onload = () => {
+            const cvs = document.createElement('canvas');
+            cvs.width = img.naturalWidth;
+            cvs.height = img.naturalHeight;
+            const ctx = cvs.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            imageData = ctx.getImageData(0, 0, cvs.width, cvs.height);
+            log(`Image Loaded: ${imageData.width}x${imageData.height}`);
+        };
+        // Handle case if image is already loaded from cache
+        if (img.complete && img.naturalHeight !== 0) {
+             const cvs = document.createElement('canvas');
+            cvs.width = img.naturalWidth;
+            cvs.height = img.naturalHeight;
+            const ctx = cvs.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            imageData = ctx.getImageData(0, 0, cvs.width, cvs.height);
+            log(`Image Loaded (Cache): ${imageData.width}x${imageData.height}`);
+        }
+
+        const variants = [
+            { id: 'basic', name: 'Basic', factory: window.createTestModuleBasic, path: 'basic/' },
+            { id: 'simd', name: 'SIMD', factory: window.createTestModuleSimd, path: 'simd/' },
+            { id: 'threads', name: 'Threads', factory: window.createTestModuleThreads, path: 'threads/' },
+            { id: 'simd-threads', name: 'SIMD+Threads', factory: window.createTestModuleSimdThreads, path: 'simd-threads/' }
+        ];
+
+        let basicTime = 0;
+
+        async function runVariant(v) {
+            const row = document.getElementById('row-' + v.id);
+            const updateCell = (cls, val) => row.querySelector('.' + cls).innerText = val;
+            updateCell('status', 'Running...');
+            row.style.background = '#e3f2fd';
+
+            try {
+                if (!v.factory) throw new Error(`Factory for ${v.name} not found! Check build.`);
+
+                log(`\n--- Starting ${v.name} ---`);
+                
+                // 1. Initialize Module
+                const t0 = performance.now();
+                const module = await v.factory({
+                    print: (text) => {}, // log(`[${v.name}] ${text}`),
+                    printErr: (text) => log(`[${v.name} ERR] ${text}`),
+                    locateFile: (path) => v.path + path
+                });
+                const t1 = performance.now();
+                updateCell('load', (t1 - t0).toFixed(0) + 'ms');
+
+                // 2. Init OCR Engine
+                const res = module._init_ocr();
+                if (res !== 0) throw new Error("Init failed code: " + res);
+
+                // 3. Warmup
+                const t2 = performance.now();
+                module._warmup_model();
+                const t3 = performance.now();
+                updateCell('warmup', (t3 - t2).toFixed(0) + 'ms');
+
+                // 4. Prepare Memory
+                const ptr = module._malloc(imageData.data.length);
+                module.HEAPU8.set(imageData.data, ptr);
+
+                // 5. Run Inference Loop
+                const iterations = 5;
+                let totalTime = 0;
+                
+                for (let i = 0; i < iterations; i++) {
+                    const start = performance.now();
+                    const jsonPtr = module._detect(ptr, imageData.width, imageData.height);
+                    const end = performance.now();
+                    totalTime += (end - start);
+                    // module._free(jsonPtr); // See previous note about pointer validity
+                }
+
+                const avgTime = totalTime / iterations;
+                updateCell('infer', avgTime.toFixed(2) + 'ms');
+                log(`${v.name} Avg Inference: ${avgTime.toFixed(2)}ms`);
+
+                // Speedup
+                if (v.id === 'basic') {
+                    basicTime = avgTime;
+                    updateCell('speedup', '1.0x');
+                } else if (basicTime > 0) {
+                    const speedup = basicTime / avgTime;
+                    updateCell('speedup', speedup.toFixed(2) + 'x');
+                }
+
+                // Cleanup
+                module._free(ptr);
+                updateCell('status', 'Done');
+                row.style.background = 'transparent';
+
+            } catch (e) {
+                log(`Error in ${v.name}: ${e}`);
+                updateCell('status', 'Failed');
+                row.style.background = '#ffebee';
+            }
+        }
+
+        document.getElementById('btnRun').onclick = async () => {
+            if (!imageData) {
+                alert("Image not loaded yet!");
+                return;
+            }
+            
+            document.getElementById('btnRun').disabled = true;
+            
+            for (const v of variants) {
+                await runVariant(v);
+                // Small delay to let UI update and GC run
+                await new Promise(r => setTimeout(r, 500));
+            }
+
+            document.getElementById('btnRun').disabled = false;
+        };
+    </script>
+</body>
+</html>
