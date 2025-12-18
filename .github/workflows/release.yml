@@ -14,17 +14,17 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v6
         with:
           node-version: '18'
           cache: 'yarn'
           cache-dependency-path: 'src/plugin/yarn.lock'
 
       - name: Setup Emscripten
-        uses: mymindstorm/setup-emsdk@v11
+        uses: mymindstorm/setup-emsdk@v14
         with:
           version: 3.1.50
 
@@ -64,7 +64,7 @@ jobs:
           zip -r ../../release_assets/obsidian-wasm-ocr.zip .
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             release_assets/main.js

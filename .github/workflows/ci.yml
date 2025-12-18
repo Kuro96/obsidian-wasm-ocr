@@ -15,17 +15,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v6
         with:
           node-version: '18'
           cache: 'yarn'
           cache-dependency-path: 'src/plugin/yarn.lock'
 
       - name: Setup Python & Pre-commit
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
 
@@ -35,7 +35,7 @@ jobs:
           pre-commit run --all-files
 
       - name: Setup Emscripten
-        uses: mymindstorm/setup-emsdk@v11
+        uses: mymindstorm/setup-emsdk@v14
         with:
           version: 3.1.50
 
@@ -54,13 +54,13 @@ jobs:
           rm -rf dist/obsidian-wasm-ocr/models
 
       - name: Archive Plugin Code (No Models)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: obsidian-wasm-ocr
           path: dist/obsidian-wasm-ocr/
 
       - name: Archive OCR Models
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ocr-models
           path: assets/models/
