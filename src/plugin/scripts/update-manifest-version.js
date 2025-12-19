@@ -1,8 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const manifestPath = path.join(__dirname, 'manifest.json');
-const packagePath = path.join(__dirname, 'package.json');
+// Fix: The script is in src/plugin/scripts/, but manifest/package.json are in src/plugin/
+const manifestPath = path.join(__dirname, '..', 'manifest.json');
+const packagePath = path.join(__dirname, '..', 'package.json');
 
 const manifest = require(manifestPath);
 const pkg = require(packagePath);
