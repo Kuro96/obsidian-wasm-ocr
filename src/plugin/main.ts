@@ -227,6 +227,17 @@ export default class OcrPlugin extends Plugin {
         return false;
       },
     });
+
+    // Subscribe to store changes to auto-process queue
+    // This allows UI components to simply add items to the store
+    useAnalysisStore.subscribe((state, prevState) => {
+      if (state.items !== prevState.items) {
+        const hasPending = state.items.some((i) => i.status === 'pending');
+        if (hasPending) {
+          this.processQueue();
+        }
+      }
+    });
   }
 
   async processQueue() {

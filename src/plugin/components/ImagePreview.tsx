@@ -1,7 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useAnalysisStore, SelectionAnchor } from '../models/store';
+import {
+  useAnalysisStore,
+  SelectionAnchor,
+  AnalysisItem,
+} from '../models/store';
 import { Notice } from 'obsidian';
-import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, Clipboard } from 'lucide-react';
 
 export const ImagePreview: React.FC = () => {
   const {
@@ -16,6 +20,7 @@ export const ImagePreview: React.FC = () => {
     clearSelection,
     selectedIndices,
     activeRange,
+    setItems,
   } = useAnalysisStore();
 
   const currentItem = items[currentIndex];
@@ -54,6 +59,56 @@ export const ImagePreview: React.FC = () => {
   const selectionSnapshot = useRef<number[]>([]);
 
   const progressBarRef = useRef<HTMLDivElement>(null);
+
+  const handlePaste = async (e?: React.ClipboardEvent) => {
+    try {
+      let blob: Blob | null = null;
+
+      // 1. Try Event Data (Synchronous, fast)
+      if (e && e.clipboardData) {
+        for (const item of Array.from(e.clipboardData.items)) {
+          if (item.type.startsWith('image/')) {
+            blob = item.getAsFile();
+            break;
+          }
+        }
+      }
+
+      // 2. Try Navigator API (Async, fallback)
+      if (!blob) {
+        const clipboardItems = await navigator.clipboard.read();
+        for (const item of clipboardItems) {
+          const imageType = item.types.find((type) =>
+            type.startsWith('image/'),
+          );
+          if (imageType) {
+            blob = await item.getType(imageType);
+            break;
+          }
+        }
+      }
+
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const newItem: AnalysisItem = {
+          id: url,
+          file: null,
+          url: url,
+          status: 'pending',
+          ocrResults: null,
+          error: null,
+        };
+        // Adding to store will trigger main.ts subscription -> processQueue
+        setItems([newItem]);
+        new Notice('Image pasted from clipboard');
+      } else {
+        new Notice('No image found in clipboard');
+      }
+    } catch (err) {
+      console.error(err);
+      new Notice('Failed to read clipboard');
+    }
+  };
 
   // --- Global Scrubbing Logic ---
   useEffect(() => {
@@ -230,7 +285,7 @@ export const ImagePreview: React.FC = () => {
 
     containerRef.current.focus({ preventScroll: true });
 
-    // Middle Click -> Pan
+    //kv Middle Click -> Pan
     if (e.button === 1) {
       e.preventDefault();
       setIsPanning(true);
@@ -634,18 +689,38 @@ export const ImagePreview: React.FC = () => {
   if (items.length === 0)
     return (
       <div
+        className="empty-state-container"
+        tabIndex={0}
+        onPaste={handlePaste}
         style={{
-          padding: '40px 20px',
-          textAlign: 'center',
-          color: 'var(--text-muted)',
+          height: '100%',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '10px',
+          justifyContent: 'center',
+          gap: '16px',
+          color: 'var(--text-muted)',
+          outline: 'none',
         }}
       >
-        <div style={{ fontSize: '2em' }}>🖼️</div>
-        <div>Select an image to start analysis</div>
+        <div style={{ fontSize: '3em' }}>🖼️</div>
+        <div style={{ fontSize: '1.1em' }}>Select an image to start</div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            className="mod-cta"
+            onClick={() => handlePaste()}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Clipboard size={16} />
+            Recognize Clipboard
+          </button>
+        </div>
+
+        <div style={{ fontSize: '0.9em', opacity: 0.8 }}>
+          or press{' '}
+          <kbd style={{ fontFamily: 'var(--font-monospace)' }}>Ctrl+V</kbd>
+        </div>
       </div>
     );
 
