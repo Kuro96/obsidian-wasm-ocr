@@ -5,8 +5,8 @@ const path = require('path');
 const manifestPath = path.join(__dirname, '..', 'manifest.json');
 const packagePath = path.join(__dirname, '..', 'package.json');
 
-const manifest = require(manifestPath);
-const pkg = require(packagePath);
+const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
 
 if (manifest.version !== pkg.version) {
   console.log(
