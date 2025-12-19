@@ -6,7 +6,7 @@ import { decodeImage } from './utils/imageUtils';
 import { OcrSettings, DEFAULT_SETTINGS, OcrSettingTab } from './settings';
 
 export default class OcrPlugin extends Plugin {
-  private ocrEngine: OcrEngine | null = null;
+  public ocrEngine: OcrEngine | null = null;
   settings: OcrSettings;
   private lastPasteTime = 0;
 

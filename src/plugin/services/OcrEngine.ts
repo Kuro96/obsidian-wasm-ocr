@@ -82,19 +82,11 @@ export class OcrEngine {
           recBin: 'PP_OCRv5_mobile_rec.ncnn.bin',
         };
 
-        const missingModels = [];
-        for (const filename of Object.values(modelsToLoad)) {
-          if (!(await adapter.exists(`${modelDir}/${filename}`))) {
-            missingModels.push(filename);
-          }
-        }
-
-        if (missingModels.length > 0) {
-          console.log(
-            '[OcrEngine] Models missing, attempting download...',
-            missingModels,
+        // Check if models exist
+        if (!(await this.checkModels())) {
+          throw new Error(
+            'OCR Models not found. Please download them in Plugin Settings.',
           );
-          await this.downloadModels(modelDir, Object.values(modelsToLoad));
         }
 
         // Load Models
@@ -135,8 +127,32 @@ export class OcrEngine {
     return this.initPromise;
   }
 
-  async downloadModels(targetDir: string, filenames: string[]) {
-    new Notice('OCR Models missing. Downloading from GitHub... (Please wait)');
+  async checkModels(): Promise<boolean> {
+    const modelDir = this.manifestDir + '/models';
+    const adapter = this.app.vault.adapter;
+    const files = [
+      'PP_OCRv5_mobile_det.ncnn.param',
+      'PP_OCRv5_mobile_det.ncnn.bin',
+      'PP_OCRv5_mobile_rec.ncnn.param',
+      'PP_OCRv5_mobile_rec.ncnn.bin',
+    ];
+
+    for (const f of files) {
+      if (!(await adapter.exists(`${modelDir}/${f}`))) return false;
+    }
+    return true;
+  }
+
+  async downloadModels(onProgress?: (msg: string) => void) {
+    const targetDir = this.manifestDir + '/models';
+    const filenames = [
+      'PP_OCRv5_mobile_det.ncnn.param',
+      'PP_OCRv5_mobile_det.ncnn.bin',
+      'PP_OCRv5_mobile_rec.ncnn.param',
+      'PP_OCRv5_mobile_rec.ncnn.bin',
+    ];
+
+    if (onProgress) onProgress('Starting download...');
     const adapter = this.app.vault.adapter;
 
     if (!(await adapter.exists(targetDir))) {
@@ -149,7 +165,7 @@ export class OcrEngine {
     for (const filename of filenames) {
       const url = `${baseUrl}/${filename}`;
       try {
-        new Notice(`Downloading ${filename}...`);
+        if (onProgress) onProgress(`Downloading ${filename}...`);
         // using requestUrl from Obsidian API to avoid CORS issues in some contexts
         const response = await requestUrl({ url, method: 'GET' });
 
@@ -165,17 +181,10 @@ export class OcrEngine {
         );
       } catch (error) {
         console.error(`Failed to download ${filename}`, error);
-        const msg =
-          `Failed to download OCR models automatically.\n` +
-          `Please manually download them from:\n` +
-          `https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/releases/latest\n\n` +
-          `And place them in:\n` +
-          `${targetDir}/`;
-        new Notice(msg, 0); // Persistent notice
         throw error;
       }
     }
-    new Notice('OCR Models downloaded successfully!');
+    if (onProgress) onProgress('Download complete!');
   }
 
   async detect(imageData: ImageData): Promise<OcrResultItem[]> {
