@@ -1,7 +1,7 @@
 {
   "id": "wasm-ocr",
   "name": "Wasm OCR",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "minAppVersion": "0.15.0",
   "description": "Offline OCR using NCNN and WebAssembly.",
   "author": "Kuro Latency",
