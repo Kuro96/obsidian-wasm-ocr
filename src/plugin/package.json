@@ -1,6 +1,6 @@
 {
   "name": "obsidian-wasm-ocr",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Local OCR using Wasm and NCNN",
   "main": "main.js",
   "scripts": {
