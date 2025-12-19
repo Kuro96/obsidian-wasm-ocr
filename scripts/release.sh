@@ -24,7 +24,7 @@ cd ../..
 
 # 3. Commit and Tag
 echo "-> Committing and Tagging v$NEW_VERSION..."
-git add src/plugin/package.json src/plugin/manifest.json
+git add src/plugin/package.json manifest.json
 git commit -m "chore(release): v$NEW_VERSION"
 git tag "v$NEW_VERSION"
 

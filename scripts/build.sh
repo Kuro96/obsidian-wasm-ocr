@@ -120,7 +120,7 @@ build_plugin() {
 
     # 6. Finalize
     echo "-> Finalizing..."
-    cp manifest.json "$PLUGIN_DIST/"
+    cp "$ROOT_DIR/manifest.json" "$PLUGIN_DIST/"
     if [ -f "styles.css" ]; then cp styles.css "$PLUGIN_DIST/"; fi
     if [ -f "main.js" ]; then mv main.js "$PLUGIN_DIST/"; fi
 

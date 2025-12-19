@@ -1,8 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 
-// Fix: The script is in src/plugin/scripts/, but manifest/package.json are in src/plugin/
-const manifestPath = path.join(__dirname, '..', 'manifest.json');
+// Fix: The script is in src/plugin/scripts/
+// package.json is in src/plugin/ (../)
+// manifest.json is in root (../../../)
+const manifestPath = path.join(__dirname, '..', '..', '..', 'manifest.json');
 const packagePath = path.join(__dirname, '..', 'package.json');
 
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
