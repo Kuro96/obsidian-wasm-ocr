@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   useAnalysisStore,
   SelectionAnchor,
@@ -60,55 +60,91 @@ export const ImagePreview: React.FC = () => {
 
   const progressBarRef = useRef<HTMLDivElement>(null);
 
-  const handlePaste = async (e?: React.ClipboardEvent) => {
-    try {
-      let blob: Blob | null = null;
+  const handlePaste = useCallback(
+    async (e?: React.ClipboardEvent | ClipboardEvent) => {
+      try {
+        let blob: Blob | null = null;
 
-      // 1. Try Event Data (Synchronous, fast)
-      if (e && e.clipboardData) {
-        for (const item of Array.from(e.clipboardData.items)) {
-          if (item.type.startsWith('image/')) {
-            blob = item.getAsFile();
-            break;
+        // 1. Try Event Data (Synchronous, fast)
+        if (e && e.clipboardData) {
+          for (const item of Array.from(e.clipboardData.items)) {
+            if (item.type.startsWith('image/')) {
+              blob = item.getAsFile();
+              break;
+            }
           }
         }
-      }
 
-      // 2. Try Navigator API (Async, fallback)
-      if (!blob) {
-        const clipboardItems = await navigator.clipboard.read();
-        for (const item of clipboardItems) {
-          const imageType = item.types.find((type) =>
-            type.startsWith('image/'),
-          );
-          if (imageType) {
-            blob = await item.getType(imageType);
-            break;
+        // 2. Try Navigator API (Async, fallback)
+        if (!blob) {
+          const clipboardItems = await navigator.clipboard.read();
+          for (const item of clipboardItems) {
+            const imageType = item.types.find((type) =>
+              type.startsWith('image/'),
+            );
+            if (imageType) {
+              blob = await item.getType(imageType);
+              break;
+            }
           }
         }
+
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const newItem: AnalysisItem = {
+            id: url,
+            file: null,
+            url: url,
+            status: 'pending',
+            ocrResults: null,
+            error: null,
+          };
+          // Adding to store will trigger main.ts subscription -> processQueue
+          setItems([newItem]);
+          new Notice('Image pasted from clipboard');
+        } else {
+          // Only show notice if we explicitly called this (e.g. button click)
+          // or if it was a paste event that didn't contain an image.
+          // However, for global paste, we might not want to spam notices if user pastes text.
+          // Let's refine this check.
+          // For now, keep original behavior but maybe we should check if 'e' exists.
+          if (!e) new Notice('No image found in clipboard');
+        }
+      } catch (err) {
+        console.error(err);
+        new Notice('Failed to read clipboard');
+      }
+    },
+    [setItems],
+  );
+
+  // --- Global Paste Listener ---
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      // 1. Check if component is mounted and visible
+      // Note: We use containerRef.current.offsetParent to check visibility.
+      // This works because if a parent is display:none, offsetParent is null.
+      if (!containerRef.current || !containerRef.current.offsetParent) return;
+
+      // 2. Check if focus is in an input/textarea (don't steal from editor)
+      // This prevents the plugin from intercepting paste when the user is typing in a note.
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        (active instanceof HTMLElement && active.isContentEditable)
+      ) {
+        return;
       }
 
-      if (blob) {
-        const url = URL.createObjectURL(blob);
-        const newItem: AnalysisItem = {
-          id: url,
-          file: null,
-          url: url,
-          status: 'pending',
-          ocrResults: null,
-          error: null,
-        };
-        // Adding to store will trigger main.ts subscription -> processQueue
-        setItems([newItem]);
-        new Notice('Image pasted from clipboard');
-      } else {
-        new Notice('No image found in clipboard');
-      }
-    } catch (err) {
-      console.error(err);
-      new Notice('Failed to read clipboard');
-    }
-  };
+      handlePaste(e);
+    };
+
+    document.addEventListener('paste', handleGlobalPaste);
+    return () => {
+      document.removeEventListener('paste', handleGlobalPaste);
+    };
+  }, [handlePaste]);
 
   // --- Global Scrubbing Logic ---
   useEffect(() => {
@@ -189,7 +225,12 @@ export const ImagePreview: React.FC = () => {
   const handleLoad = () => {
     if (imgRef.current && containerRef.current) {
       setIsLoaded(true);
-      // Reset to fit width
+      updateLayout();
+    }
+  };
+
+  const updateLayout = useCallback(() => {
+    if (imgRef.current && containerRef.current) {
       const contW = containerRef.current.clientWidth;
       const contH = containerRef.current.clientHeight;
       const natW = imgRef.current.naturalWidth;
@@ -202,13 +243,34 @@ export const ImagePreview: React.FC = () => {
         // Center Vertically
         const scaledH = natH * newScale;
         if (scaledH < contH) {
-          setOffset({ x: 0, y: (contH - scaledH) / 2 });
+          // Only center if we haven't manually panned/zoomed (or if it's initial load)
+          // For stability during resize, we might want to keep the relative center?
+          // But for "fit to width" default, simple centering is best.
+          // To avoid jumping during pan, we could check if zoom === 1.
+          if (zoom === 1 && offset.x === 0) {
+            setOffset({ x: 0, y: (contH - scaledH) / 2 });
+          }
         } else {
-          setOffset({ x: 0, y: 0 });
+          if (zoom === 1 && offset.x === 0) {
+            setOffset({ x: 0, y: 0 });
+          }
         }
       }
     }
-  };
+  }, [zoom, offset.x]);
+
+  // --- Resize Observer ---
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const observer = new ResizeObserver(() => {
+      updateLayout();
+    });
+
+    observer.observe(containerRef.current);
+
+    return () => observer.disconnect();
+  }, [updateLayout]);
 
   // --- Coordinate Mapping ---
   // Screen (Mouse) -> Image (Natural)
@@ -689,6 +751,7 @@ export const ImagePreview: React.FC = () => {
   if (items.length === 0)
     return (
       <div
+        ref={containerRef}
         className="empty-state-container"
         tabIndex={0}
         onPaste={handlePaste}
