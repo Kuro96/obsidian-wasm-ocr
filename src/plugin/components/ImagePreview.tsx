@@ -225,7 +225,12 @@ export const ImagePreview: React.FC = () => {
   const handleLoad = () => {
     if (imgRef.current && containerRef.current) {
       setIsLoaded(true);
-      // Reset to fit width
+      updateLayout();
+    }
+  };
+
+  const updateLayout = useCallback(() => {
+    if (imgRef.current && containerRef.current) {
       const contW = containerRef.current.clientWidth;
       const contH = containerRef.current.clientHeight;
       const natW = imgRef.current.naturalWidth;
@@ -238,13 +243,34 @@ export const ImagePreview: React.FC = () => {
         // Center Vertically
         const scaledH = natH * newScale;
         if (scaledH < contH) {
-          setOffset({ x: 0, y: (contH - scaledH) / 2 });
+          // Only center if we haven't manually panned/zoomed (or if it's initial load)
+          // For stability during resize, we might want to keep the relative center?
+          // But for "fit to width" default, simple centering is best.
+          // To avoid jumping during pan, we could check if zoom === 1.
+          if (zoom === 1 && offset.x === 0) {
+            setOffset({ x: 0, y: (contH - scaledH) / 2 });
+          }
         } else {
-          setOffset({ x: 0, y: 0 });
+          if (zoom === 1 && offset.x === 0) {
+            setOffset({ x: 0, y: 0 });
+          }
         }
       }
     }
-  };
+  }, [zoom, offset.x]);
+
+  // --- Resize Observer ---
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const observer = new ResizeObserver(() => {
+      updateLayout();
+    });
+
+    observer.observe(containerRef.current);
+
+    return () => observer.disconnect();
+  }, [updateLayout]);
 
   // --- Coordinate Mapping ---
   // Screen (Mouse) -> Image (Natural)
