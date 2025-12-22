@@ -7,6 +7,33 @@ import {
 import { Notice } from 'obsidian';
 import { ChevronLeft, ChevronRight, RotateCcw, Clipboard } from 'lucide-react';
 
+const ProgressBarItem: React.FC<{
+  isActive: boolean;
+  isLast: boolean;
+  index: number;
+}> = ({ isActive, isLast, index }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <div
+      style={{
+        flex: 1,
+        height: '100%',
+        backgroundColor: isActive
+          ? 'var(--interactive-accent)'
+          : isHovered
+            ? 'var(--text-selection)'
+            : 'transparent',
+        borderRight: !isLast ? '1px solid var(--background-primary)' : 'none',
+        transition: 'background-color 0.2s',
+      }}
+      title={`Image ${index + 1}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    />
+  );
+};
+
 export const ImagePreview: React.FC = () => {
   const {
     items,
@@ -843,31 +870,11 @@ export const ImagePreview: React.FC = () => {
           }}
         >
           {items.map((_, idx) => (
-            <div
+            <ProgressBarItem
               key={idx}
-              style={{
-                flex: 1,
-                height: '100%',
-                backgroundColor:
-                  idx === currentIndex
-                    ? 'var(--interactive-accent)'
-                    : 'transparent',
-                borderRight:
-                  idx < items.length - 1
-                    ? '1px solid var(--background-primary)'
-                    : 'none',
-                transition: 'background-color 0.2s',
-              }}
-              title={`Image ${idx + 1}`}
-              onMouseEnter={(e) => {
-                if (idx !== currentIndex)
-                  e.currentTarget.style.backgroundColor =
-                    'var(--text-selection)';
-              }}
-              onMouseLeave={(e) => {
-                if (idx !== currentIndex)
-                  e.currentTarget.style.backgroundColor = 'transparent';
-              }}
+              isActive={idx === currentIndex}
+              isLast={idx === items.length - 1}
+              index={idx}
             />
           ))}
         </div>

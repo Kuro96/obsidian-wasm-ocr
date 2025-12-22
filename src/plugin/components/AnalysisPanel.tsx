@@ -9,6 +9,7 @@ export const AnalysisPanel: React.FC = () => {
 
   const startResizing = (e: React.MouseEvent) => {
     e.preventDefault();
+    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
     document.body.style.cursor = 'ns-resize';
 
     const resize = (e: MouseEvent) => {
@@ -26,6 +27,7 @@ export const AnalysisPanel: React.FC = () => {
     };
 
     const stopResizing = () => {
+      // eslint-disable-next-line obsidianmd/no-static-styles-assignment
       document.body.style.cursor = '';
       window.removeEventListener('mousemove', resize);
       window.removeEventListener('mouseup', stopResizing);
@@ -57,22 +59,7 @@ export const AnalysisPanel: React.FC = () => {
       {/* Resize Handle */}
       <div
         onMouseDown={startResizing}
-        style={{
-          height: '6px',
-          cursor: 'ns-resize',
-          backgroundColor: 'var(--background-modifier-border)',
-          flexShrink: 0,
-          transition: 'background-color 0.2s',
-          zIndex: 10,
-        }}
-        className="resize-handle"
-        onMouseEnter={(e) =>
-          (e.currentTarget.style.backgroundColor = 'var(--interactive-accent)')
-        }
-        onMouseLeave={(e) =>
-          (e.currentTarget.style.backgroundColor =
-            'var(--background-modifier-border)')
-        }
+        className="resize-handle ocr-resize-handle"
       />
 
       {/* Bottom Pane: Results */}

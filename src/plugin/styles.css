@@ -1,0 +1,26 @@
+/* Analysis Panel Resize Handle */
+.ocr-resize-handle {
+    height: 6px;
+    cursor: ns-resize;
+    background-color: var(--background-modifier-border);
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+    z-index: 10;
+}
+
+.ocr-resize-handle:hover {
+    background-color: var(--interactive-accent);
+}
+
+/* Settings Tab - Model Status */
+.ocr-model-status {
+    margin-bottom: 10px;
+}
+
+.ocr-model-status.success {
+    color: var(--color-green);
+}
+
+.ocr-model-status.error {
+    color: var(--color-red);
+}

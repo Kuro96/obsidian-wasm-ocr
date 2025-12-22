@@ -29,10 +29,10 @@ export class OcrSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl('h2', { text: 'OCR Plugin Settings' });
+    new Setting(containerEl).setName("OCR plugin").setHeading();
 
     // --- Model Management ---
-    containerEl.createEl('h3', { text: 'Model Management' });
+    new Setting(containerEl).setName("Model management").setHeading();
     const modelStatusDiv = containerEl.createDiv();
     const modelsExist = this.plugin.ocrEngine
       ? await this.plugin.ocrEngine.checkModels()
@@ -40,20 +40,19 @@ export class OcrSettingTab extends PluginSettingTab {
 
     modelStatusDiv.setText(
       modelsExist
-        ? '✅ OCR Models are installed.'
-        : '❌ OCR Models are missing.',
+        ? '✅ OCR models are installed.'
+        : '❌ OCR models are missing.',
     );
-    modelStatusDiv.style.color = modelsExist
-      ? 'var(--color-green)'
-      : 'var(--color-red)';
-    modelStatusDiv.style.marginBottom = '10px';
+     
+    modelStatusDiv.addClass('ocr-model-status');
+    modelStatusDiv.addClass(modelsExist ? 'success' : 'error');
 
     new Setting(containerEl)
-      .setName('Download/Update Models')
+      .setName('Download/update models')
       .setDesc('Download the necessary NCNN models from GitHub (approx. 11MB).')
       .addButton((btn) => {
         btn.setButtonText(
-          modelsExist ? 'Re-download Models' : 'Download Models',
+          modelsExist ? 'Redownload models' : 'Download models',
         );
         if (!modelsExist) btn.setCta();
 
@@ -77,7 +76,7 @@ export class OcrSettingTab extends PluginSettingTab {
     // ------------------------
 
     new Setting(containerEl)
-      .setName('Auto-OCR on Paste')
+      .setName('Auto OCR on paste')
       .setDesc(
         'Automatically analyze images when they are pasted into the editor.',
       )
@@ -91,7 +90,7 @@ export class OcrSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName('Auto-OCR Delay (ms)')
+      .setName('Auto OCR delay (ms)')
       .setDesc(
         'Time to wait before starting OCR after pasting. Allows other plugins (e.g. Image Renamer) to process the file first.',
       )
@@ -109,7 +108,7 @@ export class OcrSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName('Auto-Open Panel')
+      .setName('Auto open panel')
       .setDesc(
         'Automatically open the analysis side panel when starting an OCR task.',
       )
@@ -123,7 +122,7 @@ export class OcrSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName('Auto-Merge Newlines')
+      .setName('Auto merge newlines')
       .setDesc(
         'Default state for the "Merge Newlines" toggle. Merges broken lines based on punctuation logic.',
       )
@@ -137,7 +136,7 @@ export class OcrSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName('Text Recognition Confidence Threshold')
+      .setName('Text recognition confidence threshold')
       .setDesc(
         'Minimum confidence score (0.0 - 1.0) for a text block to be included. Higher values reduce noise but may miss faint text.',
       )

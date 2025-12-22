@@ -17,7 +17,6 @@ yarn-error.log
 # Project Build Output (Distributables)
 dist/
 src/plugin/main.js
-src/plugin/styles.css
 
 output/
 *.pem
