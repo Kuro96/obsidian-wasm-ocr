@@ -22,7 +22,7 @@ export default class OcrPlugin extends Plugin {
 
     this.addSettingTab(new OcrSettingTab(this.app, this));
 
-    this.addRibbonIcon('scan-search', 'OCR Image', () => {
+    this.addRibbonIcon('scan-search', 'Recognize image', () => {
       const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_ANALYSIS);
       if (leaves.length === 0) {
         this.activateView();
@@ -47,7 +47,7 @@ export default class OcrPlugin extends Plugin {
 
     this.addCommand({
       id: 'ocr-analyze-current',
-      name: 'Analyze Current Image',
+      name: 'Analyze current image',
       checkCallback: (checking: boolean) => {
         const file = this.app.workspace.getActiveFile();
         if (
@@ -94,7 +94,7 @@ export default class OcrPlugin extends Plugin {
               );
               if (currentFile && currentFile instanceof TFile) {
                 new Notice(
-                  `Auto-OCR started for pasted image: ${currentFile.name}`,
+                  `Automatic recognition started for pasted image: ${currentFile.name}`,
                 );
                 this.analyzeFile(currentFile, { auto: true });
               }
@@ -111,7 +111,7 @@ export default class OcrPlugin extends Plugin {
           if (['png', 'jpg', 'jpeg', 'webp', 'bmp'].includes(ext)) {
             menu.addItem((item) => {
               item
-                .setTitle('Analyze Image')
+                .setTitle('Analyze image')
                 .setIcon('scan-search')
                 .onClick(async () => {
                   this.analyzeFile(file);
@@ -120,7 +120,7 @@ export default class OcrPlugin extends Plugin {
           } else if (ext === 'md') {
             menu.addItem((item) => {
               item
-                .setTitle('Analyze Note Images')
+                .setTitle('Analyze note images')
                 .setIcon('files')
                 .onClick(async () => {
                   this.analyzeNote(file);
@@ -152,7 +152,7 @@ export default class OcrPlugin extends Plugin {
 
           menu.addItem((item) => {
             item
-              .setTitle('Analyze Image (Beta)')
+              .setTitle('Analyze image (beta)')
               .setIcon('scan-search')
               .onClick(async () => {
                 this.analyzeImageUrl(src);
@@ -173,7 +173,7 @@ export default class OcrPlugin extends Plugin {
         if (selection && view.file) {
           menu.addItem((item) => {
             item
-              .setTitle('Analyze Selected Images')
+              .setTitle('Analyze selected images')
               .setIcon('scan-search')
               .onClick(() => {
                 if (view.file) {
@@ -187,7 +187,7 @@ export default class OcrPlugin extends Plugin {
         if (view.file && view.file.extension === 'md') {
           menu.addItem((item) => {
             item
-              .setTitle('Analyze All Images in Note')
+              .setTitle('Analyze all images in note')
               .setIcon('layers')
               .onClick(async () => {
                 if (view.file) {
@@ -203,7 +203,7 @@ export default class OcrPlugin extends Plugin {
 
           menu.addItem((item) => {
             item
-              .setTitle('Analyze Image (Beta)')
+              .setTitle('Analyze image (beta)')
               .setIcon('scan-search')
               .onClick(async () => {
                 this.analyzeImageUrl(src);
@@ -215,7 +215,7 @@ export default class OcrPlugin extends Plugin {
 
     this.addCommand({
       id: 'ocr-analyze-all-in-note',
-      name: 'Analyze All Images in Current Note',
+      name: 'Analyze all images in current note',
       checkCallback: (checking: boolean) => {
         const file = this.app.workspace.getActiveFile();
         if (file && file.extension === 'md') {
@@ -292,7 +292,7 @@ export default class OcrPlugin extends Plugin {
       if (finalStore.sourceId) {
         finalStore.saveToCache(finalStore.sourceId, finalStore.items);
       }
-      new Notice(`OCR Analysis Complete (${processedCount} images)`);
+      new Notice(`Text recognition complete (${processedCount} images)`);
     }
   }
 
@@ -321,7 +321,7 @@ export default class OcrPlugin extends Plugin {
 
     // Check Cache
     if (store.loadFromCache(file.path)) {
-      new Notice('Loaded OCR results from cache');
+      new Notice('Loaded recognition results from cache');
       return;
     }
 
@@ -346,7 +346,7 @@ export default class OcrPlugin extends Plugin {
 
     // Check Cache
     if (store.loadFromCache(noteFile.path)) {
-      new Notice('Loaded OCR results from cache');
+      new Notice('Loaded recognition results from cache');
       return;
     }
 

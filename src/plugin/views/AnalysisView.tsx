@@ -17,7 +17,7 @@ export class AnalysisView extends ItemView {
   }
 
   getDisplayText() {
-    return 'Image Analysis';
+    return 'Image analysis';
   }
 
   getIcon() {

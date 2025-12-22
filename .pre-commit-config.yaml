@@ -9,10 +9,17 @@ repos:
         exclude: ^src/core/ppocrv5_dict\.h$
         # args: [-style=file] # Default is usually sufficient if .clang-format exists
 
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: yarn --cwd src/plugin run lint:fix
+        language: system
+        pass_filenames: false
+        types_or: [javascript, jsx, ts, tsx]
+
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
-        types_or: [javascript, jsx, ts, tsx, json, markdown, yaml]
-        # Exclude generated wasm artifacts or minified files if necessary
-        exclude: ^src/plugin/src/wasm/.*\.js$
+        types_or: [json, markdown, yaml]

@@ -11,7 +11,14 @@
     "moduleResolution": "node",
     "importHelpers": true,
     "esModuleInterop": true,
-    "lib": ["DOM", "ES5", "ES6", "ES7"]
+    "lib": ["DOM", "ES5", "ES6", "ES7"],
+    "checkJs": true
   },
-  "include": ["**/*.ts", "**/*.tsx", "typings/*.d.ts"]
+  "include": ["**/*.ts", "**/*.tsx", "typings/*.d.ts", "**/*.js", "**/*.mjs"],
+  "exclude": [
+    "node_modules",
+    "esbuild.config.mjs",
+    "eslint.config.mjs",
+    "scripts"
+  ]
 }
