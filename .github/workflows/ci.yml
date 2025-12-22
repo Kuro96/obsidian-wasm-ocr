@@ -29,6 +29,10 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: Install Plugin Dependencies
+        working-directory: src/plugin
+        run: yarn install
+
       - name: Run Pre-commit Hooks
         run: |
           pip install pre-commit
