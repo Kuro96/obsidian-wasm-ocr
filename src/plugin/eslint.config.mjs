@@ -28,7 +28,7 @@ export default defineConfig([
       // example: add a rule not in the recommended set and set its severity
       "obsidianmd/prefer-file-manager-trash-file": "error",
       "obsidianmd/ui/sentence-case": ["warn", {
-        "acronyms": ["OCR"]
+        "acronyms": ["OCR", "NCNN"]
       }],
     },
   },

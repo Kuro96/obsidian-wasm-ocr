@@ -1,14 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useAnalysisStore } from '../models/store';
 import { OcrResultItem } from '../services/OcrEngine';
 import {
-  ChevronDown,
-  ChevronRight,
   Copy,
   Loader,
-  Check,
-  AlignLeft,
-  AlignJustify,
   HelpCircle,
 } from 'lucide-react';
 import { Notice } from 'obsidian';
@@ -208,9 +203,9 @@ export const ResultList: React.FC = () => {
 
   if (!ocrResults || !selectionData) return null;
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (mergeLines) {
-      navigator.clipboard.writeText(mergedViewText);
+      await navigator.clipboard.writeText(mergedViewText);
       new Notice(
         selectionData.type !== 'all'
           ? 'Copied merged selection'
@@ -236,7 +231,7 @@ export const ResultList: React.FC = () => {
       }
 
       if (text) {
-        navigator.clipboard.writeText(text);
+        await navigator.clipboard.writeText(text);
         new Notice('Copied text');
       }
     }

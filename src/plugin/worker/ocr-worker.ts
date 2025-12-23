@@ -1,6 +1,12 @@
 import createOcrModule, { OcrModule } from 'ocr-wasm-engine';
 import ocrWasmBinary from 'ocr-wasm-engine/binary';
 
+interface OcrResultItem {
+  box: [[number, number], [number, number], [number, number], [number, number]];
+  text: string;
+  prob: number;
+}
+
 // Type definitions for messages (Simplified)
 export type WorkerMessage =
   | { type: 'init'; payload: { models: Record<string, Uint8Array> } }
@@ -14,7 +20,7 @@ export type WorkerMessage =
 export type WorkerResponse =
   | { type: 'init-success' }
   | { type: 'init-error'; error: string }
-  | { type: 'detect-success'; id: number; results: any[] }
+  | { type: 'detect-success'; id: number; results: OcrResultItem[] }
   | { type: 'detect-error'; id: number; error: string }
   | { type: 'set-threshold-success' };
 
@@ -51,11 +57,11 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
         return;
       }
 
-      console.log('[Worker] Initializing Wasm...');
+      console.debug('[Worker] Initializing Wasm...');
 
       ocrModule = await createOcrModule({
         wasmBinary: ocrWasmBinary,
-        print: (text: string) => console.log('[Worker Wasm]: ' + text),
+        print: (text: string) => console.debug('[Worker Wasm]: ' + text),
         printErr: (text: string) => console.error('[Worker Wasm Err]: ' + text),
       });
 
@@ -64,7 +70,9 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
       // Create /models directory
       try {
         ocrModule.FS.mkdir('/models');
-      } catch (e) {}
+      } catch (_e) {
+        // Directory might already exist
+      }
 
       // Write model files
       writeToVFS('/models/PP_OCRv5_mobile_det.ncnn.param', models['detParam']);
@@ -90,11 +98,8 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
 
       ocrModule._warmup_model();
 
-      // Cleanup VFS strings (optional, but good practice)
-      // ... (skipped for brevity, but could do cleanup_vfs logic if needed to free VFS memory)
-
       isInitialized = true;
-      console.log('[Worker] Init complete.');
+      console.debug('[Worker] Init complete.');
       self.postMessage({ type: 'init-success' });
     } else if (msg.type === 'detect') {
       if (!ocrModule || !isInitialized)
@@ -127,10 +132,12 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
     }
   } catch (err) {
     console.error('[Worker Error]', err);
-    self.postMessage({
-      type: msg.type === 'init' ? 'init-error' : 'detect-error',
-      id: (msg as any).id,
-      error: err instanceof Error ? err.message : String(err),
-    });
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    
+    if (msg.type === 'init') {
+        self.postMessage({ type: 'init-error', error: errorMsg });
+    } else if (msg.type === 'detect') {
+        self.postMessage({ type: 'detect-error', id: msg.id, error: errorMsg });
+    }
   }
 };

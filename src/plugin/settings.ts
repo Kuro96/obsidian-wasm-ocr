@@ -49,7 +49,7 @@ export class OcrSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Download/update models')
-      .setDesc('Download the necessary NCNN models from GitHub (approx. 11MB).')
+      .setDesc('Download the necessary NCNN models')
       .addButton((btn) => {
         btn.setButtonText(
           modelsExist ? 'Redownload models' : 'Download models',
@@ -64,7 +64,7 @@ export class OcrSettingTab extends PluginSettingTab {
               (msg) => new Notice(msg),
             );
             new Notice('Models downloaded successfully!');
-            this.display(); // Refresh UI
+            await this.display(); // Refresh UI
           } catch (e) {
             new Notice('Download failed: ' + String(e));
             btn.setButtonText('Retry').setDisabled(false);
@@ -90,9 +90,9 @@ export class OcrSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName('Auto OCR delay (ms)')
+      .setName('Auto OCR delay in ms')
       .setDesc(
-        'Time to wait before starting OCR after pasting. Allows other plugins (e.g. Image Renamer) to process the file first.',
+        'Time to wait before starting OCR after pasting. Allows other plugins to process the file first.',
       )
       .addText((text) =>
         text
@@ -124,7 +124,7 @@ export class OcrSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('Auto merge newlines')
       .setDesc(
-        'Default state for the "Merge Newlines" toggle. Merges broken lines based on punctuation logic.',
+        'Default state for the "merge newlines" toggle. Merges broken lines based on punctuation logic.',
       )
       .addToggle((toggle) =>
         toggle
@@ -148,7 +148,7 @@ export class OcrSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.textConfidenceThreshold = value;
             await this.plugin.saveSettings();
-            this.plugin.applySettings();
+            await this.plugin.applySettings();
           }),
       );
   }

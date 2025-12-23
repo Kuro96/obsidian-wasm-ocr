@@ -1,4 +1,4 @@
-import { App, Plugin, TFile, WorkspaceLeaf, Notice, Menu } from 'obsidian';
+import { Plugin, TFile, WorkspaceLeaf, Notice, Menu, requestUrl } from 'obsidian';
 import { AnalysisView, VIEW_TYPE_ANALYSIS } from './views/AnalysisView';
 import { OcrEngine } from './services/OcrEngine';
 import { useAnalysisStore, AnalysisItem } from './models/store';
@@ -16,16 +16,16 @@ export default class OcrPlugin extends Plugin {
 
     this.ocrEngine = new OcrEngine(this.app, this.manifest.dir);
     // Apply initial settings (threshold)
-    this.applySettings();
+    await this.applySettings();
 
     this.registerView(VIEW_TYPE_ANALYSIS, (leaf) => new AnalysisView(leaf));
 
     this.addSettingTab(new OcrSettingTab(this.app, this));
 
-    this.addRibbonIcon('scan-search', 'Recognize image', () => {
+    this.addRibbonIcon('scan-search', 'Recognize image', async () => {
       const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_ANALYSIS);
       if (leaves.length === 0) {
-        this.activateView();
+        await this.activateView();
         return;
       }
 
@@ -41,7 +41,7 @@ export default class OcrPlugin extends Plugin {
       ) {
         rightSplit.collapse();
       } else {
-        this.activateView();
+        await this.activateView();
       }
     });
 
@@ -57,7 +57,7 @@ export default class OcrPlugin extends Plugin {
           )
         ) {
           if (!checking) {
-            this.analyzeFile(file);
+            void this.analyzeFile(file);
           }
           return true;
         }
@@ -96,7 +96,7 @@ export default class OcrPlugin extends Plugin {
                 new Notice(
                   `Automatic recognition started for pasted image: ${currentFile.name}`,
                 );
-                this.analyzeFile(currentFile, { auto: true });
+                void this.analyzeFile(currentFile, { auto: true });
               }
             }, this.settings.autoOcrDelay);
           }
@@ -114,7 +114,7 @@ export default class OcrPlugin extends Plugin {
                 .setTitle('Analyze image')
                 .setIcon('scan-search')
                 .onClick(async () => {
-                  this.analyzeFile(file);
+                  await this.analyzeFile(file);
                 });
             });
           } else if (ext === 'md') {
@@ -123,7 +123,7 @@ export default class OcrPlugin extends Plugin {
                 .setTitle('Analyze note images')
                 .setIcon('files')
                 .onClick(async () => {
-                  this.analyzeNote(file);
+                  await this.analyzeNote(file);
                 });
             });
           }
@@ -155,7 +155,7 @@ export default class OcrPlugin extends Plugin {
               .setTitle('Analyze image (beta)')
               .setIcon('scan-search')
               .onClick(async () => {
-                this.analyzeImageUrl(src);
+                await this.analyzeImageUrl(src);
               });
           });
 
@@ -175,9 +175,9 @@ export default class OcrPlugin extends Plugin {
             item
               .setTitle('Analyze selected images')
               .setIcon('scan-search')
-              .onClick(() => {
+              .onClick(async () => {
                 if (view.file) {
-                  this.analyzeText(selection, view.file);
+                  await this.analyzeText(selection, view.file);
                 }
               });
           });
@@ -191,7 +191,7 @@ export default class OcrPlugin extends Plugin {
               .setIcon('layers')
               .onClick(async () => {
                 if (view.file) {
-                  this.analyzeNote(view.file);
+                  await this.analyzeNote(view.file);
                 }
               });
           });
@@ -206,7 +206,7 @@ export default class OcrPlugin extends Plugin {
               .setTitle('Analyze image (beta)')
               .setIcon('scan-search')
               .onClick(async () => {
-                this.analyzeImageUrl(src);
+                await this.analyzeImageUrl(src);
               });
           });
         }
@@ -220,7 +220,7 @@ export default class OcrPlugin extends Plugin {
         const file = this.app.workspace.getActiveFile();
         if (file && file.extension === 'md') {
           if (!checking) {
-            this.analyzeNote(file);
+            void this.analyzeNote(file);
           }
           return true;
         }
@@ -234,7 +234,7 @@ export default class OcrPlugin extends Plugin {
       if (state.items !== prevState.items) {
         const hasPending = state.items.some((i) => i.status === 'pending');
         if (hasPending) {
-          this.processQueue();
+          void this.processQueue();
         }
       }
     });
@@ -261,9 +261,8 @@ export default class OcrPlugin extends Plugin {
             );
             imageData = await decodeImage(arrayBuffer);
           } else {
-            const response = await fetch(currentItem.url);
-            const blob = await response.blob();
-            const arrayBuffer = await blob.arrayBuffer();
+            const response = await requestUrl({ url: currentItem.url });
+            const arrayBuffer = response.arrayBuffer;
             imageData = await decodeImage(arrayBuffer);
           }
 
@@ -311,7 +310,7 @@ export default class OcrPlugin extends Plugin {
     };
 
     store.setItems([item]);
-    this.processQueue();
+    await this.processQueue();
   }
 
   async analyzeFile(file: TFile, options?: { auto?: boolean }) {
@@ -336,7 +335,7 @@ export default class OcrPlugin extends Plugin {
     };
 
     store.setItems([item]);
-    this.processQueue();
+    await this.processQueue();
   }
 
   async analyzeNote(noteFile: TFile, options?: { auto?: boolean }) {
@@ -385,7 +384,7 @@ export default class OcrPlugin extends Plugin {
 
     // 2. Process External Images (Regex scan)
     const content = await this.app.vault.read(noteFile);
-    const externalImgRegex = /!\[.*?\]\((https?:\/\/[^\)]+)\)/g;
+    const externalImgRegex = /!\[.*?\]\((https?:\/\/[^)]+)\)/g;
     let match;
     while ((match = externalImgRegex.exec(content)) !== null) {
       const url = match[1];
@@ -408,7 +407,7 @@ export default class OcrPlugin extends Plugin {
     }
 
     store.setItems(items);
-    this.processQueue();
+    await this.processQueue();
     new Notice(`Queued ${items.length} images for analysis.`);
   }
 
@@ -446,7 +445,7 @@ export default class OcrPlugin extends Plugin {
     }
 
     // MD Links: ![](path)
-    const mdRegex = /!\[.*?\]\((https?:\/\/[^\)]+|[^\)]+)\)/g;
+    const mdRegex = /!\[.*?\]\((https?:\/\/[^)]+|[^)]+)\)/g;
     while ((match = mdRegex.exec(text)) !== null) {
       const link = match[1];
       if (link.startsWith('http')) {
@@ -491,8 +490,8 @@ export default class OcrPlugin extends Plugin {
     if (items.length > 0) {
       const store = useAnalysisStore.getState();
       store.setItems(items);
-      this.processQueue();
-      this.activateView();
+      await this.processQueue();
+      await this.activateView();
       new Notice(`Queued ${items.length} images from selection.`);
     } else {
       new Notice('No valid images found in selection.');
@@ -505,12 +504,12 @@ export default class OcrPlugin extends Plugin {
 
   async saveSettings() {
     await this.saveData(this.settings);
-    this.applySettings();
+    await this.applySettings();
   }
 
-  applySettings() {
+  async applySettings() {
     if (this.ocrEngine) {
-      this.ocrEngine.setThreshold(this.settings.textConfidenceThreshold);
+      await this.ocrEngine.setThreshold(this.settings.textConfidenceThreshold);
     }
   }
 

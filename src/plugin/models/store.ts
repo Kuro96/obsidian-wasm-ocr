@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { TFile } from 'obsidian';
+import type { TFile } from 'obsidian';
 import { OcrResultItem } from '../services/OcrEngine';
 
 export interface SelectionAnchor {

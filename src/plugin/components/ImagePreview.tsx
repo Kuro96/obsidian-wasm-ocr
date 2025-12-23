@@ -88,13 +88,15 @@ export const ImagePreview: React.FC = () => {
   const progressBarRef = useRef<HTMLDivElement>(null);
 
   const handlePaste = useCallback(
-    async (e?: React.ClipboardEvent | ClipboardEvent) => {
+    async (e?: { clipboardData: DataTransfer | null }) => {
       try {
         let blob: Blob | null = null;
 
         // 1. Try Event Data (Synchronous, fast)
-        if (e && e.clipboardData) {
-          for (const item of Array.from(e.clipboardData.items)) {
+        const items = e?.clipboardData?.items;
+        if (items) {
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i];
             if (item.type.startsWith('image/')) {
               blob = item.getAsFile();
               break;
@@ -223,31 +225,6 @@ export const ImagePreview: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [currentIndex]);
-
-  useEffect(() => {
-    const updateScale = () => {
-      if (imgRef.current) {
-        // Initial fit-to-width
-        // We acturally rely on zoom=1 being fit-to-width of the container?
-        // Or scale being the ratio between rendered px and natural px.
-        const naturalWidth = imgRef.current.naturalWidth;
-        const clientWidth = imgRef.current.clientWidth;
-        if (naturalWidth > 0) {
-          // When Zoom=1, image width = container width.
-          // Scale is purely for coordinate mapping from Natural -> Screen (at Zoom 1).
-          // Actually, if we use transform scale, imgRef.current.clientWidth might change?
-          // Let's use natural width as base.
-          // ScreenX = NaturalX * (ContainerW / NaturalW) * Zoom + OffsetX
-          // Scale = ContainerW / NaturalW
-          // But ContainerW varies.
-          // Let's simplified:
-          // We just need Scale to map Natural Coordinates to "Base Display Coordinates".
-        }
-      }
-    };
-    // We don't really need to track scale via ResizeObserver if we handle layout via CSS transform
-    // But we need 'scale' for getHitInfo to map Box(Natural) -> Screen.
-  }, [imageUrl]);
 
   const handleLoad = () => {
     if (imgRef.current && containerRef.current) {
