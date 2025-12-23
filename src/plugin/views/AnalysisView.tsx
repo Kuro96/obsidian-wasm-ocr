@@ -1,12 +1,12 @@
-import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { ItemView, type WorkspaceLeaf } from 'obsidian';
 import React from 'react';
-import { createRoot, Root } from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 import { AnalysisPanel } from '../components/AnalysisPanel';
 
 export const VIEW_TYPE_ANALYSIS = 'analysis-view';
 
 export class AnalysisView extends ItemView {
-  root: Root | null = null;
+  root: ReturnType<typeof createRoot> | null = null;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
@@ -33,11 +33,13 @@ export class AnalysisView extends ItemView {
         <AnalysisPanel />
       </React.StrictMode>,
     );
+    await Promise.resolve();
   }
 
   async onClose() {
     if (this.root) {
       this.root.unmount();
     }
+    await Promise.resolve();
   }
 }

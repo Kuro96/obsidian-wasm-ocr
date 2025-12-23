@@ -1,6 +1,7 @@
-import { App, Notice, requestUrl } from 'obsidian';
+import { App, requestUrl } from 'obsidian';
 // @ts-ignore
 import workerCode from 'worker:ocr';
+import type { WorkerResponse } from '../worker/ocr-worker';
 
 const GITHUB_ORG = 'Kuro96';
 const GITHUB_REPO = 'obsidian-wasm-ocr';
@@ -21,7 +22,7 @@ export class OcrEngine {
   // Pending requests map: requestId -> { resolve, reject }
   private pendingRequests = new Map<
     number,
-    { resolve: (res: any) => void; reject: (err: any) => void }
+    { resolve: (res: OcrResultItem[]) => void; reject: (err: Error) => void }
   >();
   private nextRequestId = 1;
 
@@ -32,96 +33,102 @@ export class OcrEngine {
 
   async init() {
     if (this.worker) return;
-    if (this.initPromise) return this.initPromise;
+    if (this.initPromise !== null) return this.initPromise;
 
     this.isInitializing = true;
-    this.initPromise = new Promise(async (resolve, reject) => {
-      try {
-        console.log('[OcrEngine] Starting Worker...');
-        const blob = new Blob([workerCode], { type: 'application/javascript' });
-        const url = URL.createObjectURL(blob);
-        this.worker = new Worker(url);
+    this.initPromise = new Promise((resolve, reject) => {
+      (async () => {
+        try {
+          console.debug('[OcrEngine] Starting Worker...');
+          const blob = new Blob([workerCode], { type: 'application/javascript' });
+          const url = URL.createObjectURL(blob);
+          this.worker = new Worker(url);
 
-        // Setup Listener
-        this.worker.onmessage = (e) => {
-          const msg = e.data;
-          if (msg.type === 'init-success') {
-            console.log('[OcrEngine] Worker Init Success');
-            resolve();
-          } else if (msg.type === 'init-error') {
-            console.error('[OcrEngine] Worker Init Error:', msg.error);
-            reject(new Error(msg.error));
-          } else if (msg.type === 'detect-success') {
-            const req = this.pendingRequests.get(msg.id);
-            if (req) {
-              req.resolve(msg.results);
-              this.pendingRequests.delete(msg.id);
+          // Setup Listener
+          this.worker.onmessage = (e: MessageEvent<WorkerResponse>) => {
+            const msg = e.data;
+            if (msg.type === 'init-success') {
+              console.debug('[OcrEngine] Worker Init Success');
+              resolve();
+            } else if (msg.type === 'init-error') {
+              console.error('[OcrEngine] Worker Init Error:', msg.error);
+              reject(new Error(msg.error));
+            } else if (msg.type === 'detect-success') {
+              const req = this.pendingRequests.get(msg.id);
+              if (req) {
+                req.resolve(msg.results);
+                this.pendingRequests.delete(msg.id);
+              }
+            } else if (msg.type === 'detect-error') {
+              const req = this.pendingRequests.get(msg.id);
+              if (req) {
+                req.reject(new Error(msg.error));
+                this.pendingRequests.delete(msg.id);
+              }
             }
-          } else if (msg.type === 'detect-error') {
-            const req = this.pendingRequests.get(msg.id);
-            if (req) {
-              req.reject(new Error(msg.error));
-              this.pendingRequests.delete(msg.id);
+          };
+
+          this.worker.onerror = (err) => {
+            console.error('[OcrEngine] Worker Error:', err);
+            reject(err instanceof Error ? err : new Error(String(err)));
+          };
+
+          // Ensure models are available
+          const modelDir = this.manifestDir + '/models';
+          const adapter = this.app.vault.adapter;
+
+          const modelsToLoad = {
+            detParam: 'PP_OCRv5_mobile_det.ncnn.param',
+            detBin: 'PP_OCRv5_mobile_det.ncnn.bin',
+            recParam: 'PP_OCRv5_mobile_rec.ncnn.param',
+            recBin: 'PP_OCRv5_mobile_rec.ncnn.bin',
+          };
+
+          // Check if models exist
+          if (!(await this.checkModels())) {
+            throw new Error(
+              'OCR Models not found. Please download them in Plugin Settings.',
+            );
+          }
+
+          // Load Models
+          console.debug('[OcrEngine] Loading models...');
+
+          const loadedModels: Record<string, Uint8Array> = {};
+
+          for (const [key, filename] of Object.entries(modelsToLoad)) {
+            const path = `${modelDir}/${filename}`;
+            if (await adapter.exists(path)) {
+              const buf = await adapter.readBinary(path);
+              loadedModels[key] = new Uint8Array(buf);
+            } else {
+              throw new Error(`Model file missing: ${path}`);
             }
           }
-        };
 
-        this.worker.onerror = (err) => {
-          console.error('[OcrEngine] Worker Error:', err);
-          reject(err);
-        };
+          // Send Init Message with Transfers
+          // We need to collect buffers to transfer ownership
+          const buffers = Object.values(loadedModels).map((arr) => arr.buffer);
 
-        // Ensure models are available
-        const modelDir = this.manifestDir + '/models';
-        const adapter = this.app.vault.adapter;
-
-        const modelsToLoad = {
-          detParam: 'PP_OCRv5_mobile_det.ncnn.param',
-          detBin: 'PP_OCRv5_mobile_det.ncnn.bin',
-          recParam: 'PP_OCRv5_mobile_rec.ncnn.param',
-          recBin: 'PP_OCRv5_mobile_rec.ncnn.bin',
-        };
-
-        // Check if models exist
-        if (!(await this.checkModels())) {
-          throw new Error(
-            'OCR Models not found. Please download them in Plugin Settings.',
-          );
-        }
-
-        // Load Models
-        console.log('[OcrEngine] Loading models...');
-
-        const loadedModels: Record<string, Uint8Array> = {};
-
-        for (const [key, filename] of Object.entries(modelsToLoad)) {
-          const path = `${modelDir}/${filename}`;
-          if (await adapter.exists(path)) {
-            const buf = await adapter.readBinary(path);
-            loadedModels[key] = new Uint8Array(buf);
+          if (this.worker) {
+            this.worker.postMessage(
+              {
+                type: 'init',
+                payload: { models: loadedModels },
+              },
+              buffers,
+            ); // Transfer buffers!
           } else {
-            throw new Error(`Model file missing: ${path}`);
+            reject(new Error("Worker initialization failed"));
           }
+        } catch (e) {
+          console.error(e);
+          this.worker = null;
+          reject(e instanceof Error ? e : new Error(String(e)));
+        } finally {
+          this.isInitializing = false;
         }
-
-        // Send Init Message with Transfers
-        // We need to collect buffers to transfer ownership
-        const buffers = Object.values(loadedModels).map((arr) => arr.buffer);
-
-        this.worker.postMessage(
-          {
-            type: 'init',
-            payload: { models: loadedModels },
-          },
-          buffers,
-        ); // Transfer buffers!
-      } catch (e) {
-        console.error(e);
-        this.worker = null;
-        reject(e);
-      } finally {
-        this.isInitializing = false;
-      }
+      })();
     });
 
     return this.initPromise;
@@ -199,7 +206,7 @@ export class OcrEngine {
       // NCNN expects RGBA.
       const buffer = new Uint8Array(imageData.data);
 
-      this.worker!.postMessage(
+      this.worker.postMessage(
         {
           type: 'detect',
           id,

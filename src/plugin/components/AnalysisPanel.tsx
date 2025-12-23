@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Header } from './Header';
 import { ImagePreview } from './ImagePreview';
 import { ResultList } from './ResultList';
@@ -9,8 +9,7 @@ export const AnalysisPanel: React.FC = () => {
 
   const startResizing = (e: React.MouseEvent) => {
     e.preventDefault();
-    // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-    document.body.style.cursor = 'ns-resize';
+    document.body.classList.add('ocr-is-resizing');
 
     const resize = (e: MouseEvent) => {
       if (containerRef.current) {
@@ -27,8 +26,7 @@ export const AnalysisPanel: React.FC = () => {
     };
 
     const stopResizing = () => {
-      // eslint-disable-next-line obsidianmd/no-static-styles-assignment
-      document.body.style.cursor = '';
+      document.body.classList.remove('ocr-is-resizing');
       window.removeEventListener('mousemove', resize);
       window.removeEventListener('mouseup', stopResizing);
     };

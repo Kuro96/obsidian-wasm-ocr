@@ -30,13 +30,13 @@ declare module 'ocr-wasm-engine' {
       writeFile(
         path: string,
         data: Uint8Array | ArrayBufferView,
-        opts?: any,
+        opts?: Record<string, unknown>,
       ): void;
       mkdir(path: string, mode?: number): void;
     };
   }
 
-  const createOcrModule: (moduleOverrides?: any) => Promise<OcrModule>;
+  const createOcrModule: (moduleOverrides?: Record<string, unknown>) => Promise<OcrModule>;
   export default createOcrModule;
 }
 

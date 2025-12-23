@@ -24,3 +24,8 @@
 .ocr-model-status.error {
     color: var(--color-red);
 }
+
+.ocr-is-resizing {
+    cursor: ns-resize !important;
+    user-select: none;
+}
