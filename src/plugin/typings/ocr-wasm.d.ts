@@ -36,7 +36,9 @@ declare module 'ocr-wasm-engine' {
     };
   }
 
-  const createOcrModule: (moduleOverrides?: Record<string, unknown>) => Promise<OcrModule>;
+  const createOcrModule: (
+    moduleOverrides?: Record<string, unknown>,
+  ) => Promise<OcrModule>;
   export default createOcrModule;
 }
 
