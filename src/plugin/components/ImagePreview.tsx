@@ -553,7 +553,7 @@ export const ImagePreview: React.FC = () => {
   };
 
   // --- Keyboard Shortcuts ---
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = async (e: React.KeyboardEvent) => {
     // Navigation (Left/Right Arrows)
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
@@ -609,7 +609,7 @@ export const ImagePreview: React.FC = () => {
       }
 
       if (text) {
-        navigator.clipboard.writeText(text);
+        await navigator.clipboard.writeText(text);
         new Notice('Copied text');
       }
     }

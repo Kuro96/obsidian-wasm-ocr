@@ -1,12 +1,12 @@
 import { ItemView, type WorkspaceLeaf } from 'obsidian';
 import React from 'react';
-import { createRoot } from 'react-dom/client';
+import { createRoot, type Root } from 'react-dom/client';
 import { AnalysisPanel } from '../components/AnalysisPanel';
 
 export const VIEW_TYPE_ANALYSIS = 'analysis-view';
 
 export class AnalysisView extends ItemView {
-  root: ReturnType<typeof createRoot> | null = null;
+  root: Root | null = null;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);

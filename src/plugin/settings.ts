@@ -29,10 +29,8 @@ export class OcrSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    new Setting(containerEl).setName("OCR plugin").setHeading();
-
     // --- Model Management ---
-    new Setting(containerEl).setName("Model management").setHeading();
+    new Setting(containerEl).setName('Model Management').setHeading();
     const modelStatusDiv = containerEl.createDiv();
     const modelsExist = this.plugin.ocrEngine
       ? await this.plugin.ocrEngine.checkModels()
@@ -43,13 +41,13 @@ export class OcrSettingTab extends PluginSettingTab {
         ? '✅ OCR models are installed.'
         : '❌ OCR models are missing.',
     );
-     
+
     modelStatusDiv.addClass('ocr-model-status');
     modelStatusDiv.addClass(modelsExist ? 'success' : 'error');
 
     new Setting(containerEl)
       .setName('Download/update models')
-      .setDesc('Download the necessary NCNN models')
+      .setDesc('Download the necessary binary model files')
       .addButton((btn) => {
         btn.setButtonText(
           modelsExist ? 'Redownload models' : 'Download models',
@@ -72,11 +70,9 @@ export class OcrSettingTab extends PluginSettingTab {
         });
       });
 
-    containerEl.createEl('hr');
-    // ------------------------
-
+    new Setting(containerEl).setName('Analyze Settings').setHeading();
     new Setting(containerEl)
-      .setName('Auto OCR on paste')
+      .setName('Auto analyze on paste')
       .setDesc(
         'Automatically analyze images when they are pasted into the editor.',
       )
@@ -90,9 +86,9 @@ export class OcrSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName('Auto OCR delay in ms')
+      .setName('Auto analyze delay in ms')
       .setDesc(
-        'Time to wait before starting OCR after pasting. Allows other plugins to process the file first.',
+        'Time to wait before analyzing after pasting. Allows other plugins to process the file first.',
       )
       .addText((text) =>
         text
@@ -110,7 +106,7 @@ export class OcrSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('Auto open panel')
       .setDesc(
-        'Automatically open the analysis side panel when starting an OCR task.',
+        'Automatically open the analysis side panel when starting an analyze task.',
       )
       .addToggle((toggle) =>
         toggle
