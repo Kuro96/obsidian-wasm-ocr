@@ -15,9 +15,9 @@ export async function decodeImage(buffer: ArrayBuffer): Promise<ImageData> {
       resolve(ctx.getImageData(0, 0, img.width, img.height));
       URL.revokeObjectURL(img.src);
     };
-    img.onerror = (e) => {
+    img.onerror = () => {
       URL.revokeObjectURL(img.src);
-      reject(e);
+      reject(new Error('Failed to decode image'));
     };
     img.src = URL.createObjectURL(blob);
   });

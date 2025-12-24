@@ -1,11 +1,7 @@
 import React, { useMemo } from 'react';
 import { useAnalysisStore } from '../models/store';
 import { OcrResultItem } from '../services/OcrEngine';
-import {
-  Copy,
-  Loader,
-  HelpCircle,
-} from 'lucide-react';
+import { Copy, Loader, HelpCircle } from 'lucide-react';
 import { Notice } from 'obsidian';
 
 // Helper: Sort and Merge
@@ -242,7 +238,6 @@ export const ResultList: React.FC = () => {
     const { subset, type } = selectionData;
 
     return subset.map((item, idx) => {
-      let content = item.text;
       let before = '';
       let highlighted = '';
       let after = '';

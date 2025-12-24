@@ -22,4 +22,4 @@ repos:
     rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
-        types_or: [json, markdown, yaml]
+        types_or: [javascript, jsx, ts, tsx, json, markdown, yaml]

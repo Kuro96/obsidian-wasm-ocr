@@ -37,10 +37,12 @@ export class OcrEngine {
 
     this.isInitializing = true;
     this.initPromise = new Promise((resolve, reject) => {
-      (async () => {
+      const initWorker = async () => {
         try {
           console.debug('[OcrEngine] Starting Worker...');
-          const blob = new Blob([workerCode], { type: 'application/javascript' });
+          const blob = new Blob([workerCode], {
+            type: 'application/javascript',
+          });
           const url = URL.createObjectURL(blob);
           this.worker = new Worker(url);
 
@@ -69,8 +71,12 @@ export class OcrEngine {
           };
 
           this.worker.onerror = (err) => {
-            console.error('[OcrEngine] Worker Error:', err);
-            reject(err instanceof Error ? err : new Error(String(err)));
+            // Fix: 'err' will use Object's default stringification format ('[object Object]') when stringified.
+            // ErrorEvent has a message property, or it might be a simple Event.
+            const errorMsg =
+              err instanceof ErrorEvent ? err.message : 'Unknown Worker Error';
+            console.error('[OcrEngine] Worker Error:', errorMsg, err);
+            reject(err instanceof Error ? err : new Error(String(errorMsg)));
           };
 
           // Ensure models are available
@@ -119,7 +125,7 @@ export class OcrEngine {
               buffers,
             ); // Transfer buffers!
           } else {
-            reject(new Error("Worker initialization failed"));
+            reject(new Error('Worker initialization failed'));
           }
         } catch (e) {
           console.error(e);
@@ -128,7 +134,9 @@ export class OcrEngine {
         } finally {
           this.isInitializing = false;
         }
-      })();
+      };
+
+      void initWorker();
     });
 
     return this.initPromise;

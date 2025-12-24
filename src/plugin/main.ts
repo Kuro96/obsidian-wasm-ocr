@@ -1,4 +1,5 @@
-import { Plugin, TFile, WorkspaceLeaf, Notice, Menu, requestUrl } from 'obsidian';
+import { Plugin, TFile, Notice, Menu, requestUrl } from 'obsidian';
+import type { WorkspaceLeaf } from 'obsidian';
 import { AnalysisView, VIEW_TYPE_ANALYSIS } from './views/AnalysisView';
 import { OcrEngine } from './services/OcrEngine';
 import { useAnalysisStore, AnalysisItem } from './models/store';

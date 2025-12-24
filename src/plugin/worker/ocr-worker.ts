@@ -70,7 +70,7 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
       // Create /models directory
       try {
         ocrModule.FS.mkdir('/models');
-      } catch (_e) {
+      } catch {
         // Directory might already exist
       }
 
@@ -133,11 +133,11 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
   } catch (err) {
     console.error('[Worker Error]', err);
     const errorMsg = err instanceof Error ? err.message : String(err);
-    
+
     if (msg.type === 'init') {
-        self.postMessage({ type: 'init-error', error: errorMsg });
+      self.postMessage({ type: 'init-error', error: errorMsg });
     } else if (msg.type === 'detect') {
-        self.postMessage({ type: 'detect-error', id: msg.id, error: errorMsg });
+      self.postMessage({ type: 'detect-error', id: msg.id, error: errorMsg });
     }
   }
 };

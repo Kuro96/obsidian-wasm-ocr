@@ -1,46 +1,52 @@
 // eslint.config.mjs
-import tsparser from "@typescript-eslint/parser";
-import { defineConfig } from "eslint/config";
-import obsidianmd from "eslint-plugin-obsidianmd";
+import tsparser from '@typescript-eslint/parser';
+import { defineConfig } from 'eslint/config';
+import obsidianmd from 'eslint-plugin-obsidianmd';
 
 export default defineConfig([
   {
-    ignores: ["main.js", "node_modules/**"],
+    ignores: ['main.js', 'node_modules/**'],
   },
   {
-    files: ["**/*.ts", "**/*.tsx"],
+    files: ['**/*.ts', '**/*.tsx'],
     plugins: {
       obsidianmd,
     },
     languageOptions: {
       parser: tsparser,
       parserOptions: {
-        project: "./tsconfig.json",
+        project: './tsconfig.json',
         tsconfigRootDir: import.meta.dirname,
       },
     },
 
     // You can add your own configuration to override or add rules
     rules: {
-      ...obsidianmd.configs.recommended,
+      ...obsidianmd.configs.recommended.rules,
       // example: turn off a rule from the recommended set
-      "obsidianmd/sample-names": "off",
+      'obsidianmd/sample-names': 'off',
       // example: add a rule not in the recommended set and set its severity
-      "obsidianmd/prefer-file-manager-trash-file": "error",
-      "obsidianmd/ui/sentence-case": ["warn", {
-        "acronyms": ["OCR", "NCNN"]
-      }],
+      'obsidianmd/prefer-file-manager-trash-file': 'error',
+      'obsidianmd/ui/sentence-case': [
+        'warn',
+        {
+          acronyms: ['OCR', 'NCNN'],
+        },
+      ],
     },
   },
   {
-    files: ["**/*.js", "**/*.mjs"],
+    files: ['**/*.js', '**/*.mjs'],
     plugins: {
       obsidianmd,
     },
     rules: {
-      "obsidianmd/ui/sentence-case": ["warn", {
-        "acronyms": ["OCR"]
-      }],
-    }
-  }
+      'obsidianmd/ui/sentence-case': [
+        'warn',
+        {
+          acronyms: ['OCR'],
+        },
+      ],
+    },
+  },
 ]);
