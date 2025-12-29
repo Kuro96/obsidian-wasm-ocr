@@ -30,7 +30,7 @@ export class OcrSettingTab extends PluginSettingTab {
     containerEl.empty();
 
     // --- Model Management ---
-    new Setting(containerEl).setName('Model Management').setHeading();
+    new Setting(containerEl).setName('Model management').setHeading();
     const modelStatusDiv = containerEl.createDiv();
     const modelsExist = this.plugin.ocrEngine
       ? await this.plugin.ocrEngine.checkModels()
@@ -70,7 +70,7 @@ export class OcrSettingTab extends PluginSettingTab {
         });
       });
 
-    new Setting(containerEl).setName('Analyze Settings').setHeading();
+    new Setting(containerEl).setName('Analyze').setHeading();
     new Setting(containerEl)
       .setName('Auto analyze on paste')
       .setDesc(
