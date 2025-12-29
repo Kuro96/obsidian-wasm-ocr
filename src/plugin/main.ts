@@ -262,8 +262,19 @@ export default class OcrPlugin extends Plugin {
             );
             imageData = await decodeImage(arrayBuffer);
           } else {
-            const response = await requestUrl({ url: currentItem.url });
-            const arrayBuffer = response.arrayBuffer;
+            let arrayBuffer: ArrayBuffer;
+            if (currentItem.url.startsWith('http')) {
+              const response = await requestUrl({ url: currentItem.url });
+              arrayBuffer = response.arrayBuffer;
+            } else {
+              const response = await fetch(currentItem.url);
+              if (!response.ok) {
+                throw new Error(
+                  `Failed to load image: ${response.status} ${response.statusText}`,
+                );
+              }
+              arrayBuffer = await response.arrayBuffer();
+            }
             imageData = await decodeImage(arrayBuffer);
           }
 
