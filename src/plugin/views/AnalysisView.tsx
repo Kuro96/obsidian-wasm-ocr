@@ -6,7 +6,7 @@ import { AnalysisPanel } from '../components/AnalysisPanel';
 export const VIEW_TYPE_ANALYSIS = 'analysis-view';
 
 export class AnalysisView extends ItemView {
-  root: Root | null = null;
+  root: Root = null;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);

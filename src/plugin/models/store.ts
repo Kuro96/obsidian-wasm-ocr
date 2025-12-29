@@ -9,7 +9,7 @@ export interface SelectionAnchor {
 
 export interface AnalysisItem {
   id: string;
-  file: TFile | null;
+  file: TFile;
   url: string;
   status: 'pending' | 'analyzing' | 'success' | 'error';
   ocrResults: OcrResultItem[] | null;
