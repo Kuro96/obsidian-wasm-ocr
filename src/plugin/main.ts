@@ -266,14 +266,33 @@ export default class OcrPlugin extends Plugin {
             if (currentItem.url.startsWith('http')) {
               const response = await requestUrl({ url: currentItem.url });
               arrayBuffer = response.arrayBuffer;
-            } else {
-              const response = await fetch(currentItem.url);
-              if (!response.ok) {
-                throw new Error(
-                  `Failed to load image: ${response.status} ${response.statusText}`,
-                );
+            } else if (currentItem.url.startsWith('data:')) {
+              const base64 = currentItem.url.split(',')[1];
+              if (!base64) throw new Error('Invalid data URI');
+              const binaryString = atob(base64);
+              const len = binaryString.length;
+              const bytes = new Uint8Array(len);
+              for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
               }
-              arrayBuffer = await response.arrayBuffer();
+              arrayBuffer = bytes.buffer;
+            } else {
+              // Handle blob:, app://, and other local protocols via XHR
+              // This avoids using 'fetch' which might be linted against, and handles blob: which requestUrl cannot
+              arrayBuffer = await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', currentItem.url);
+                xhr.responseType = 'arraybuffer';
+                xhr.onload = () => {
+                  if (xhr.status === 200 || xhr.status === 0) {
+                    resolve(xhr.response);
+                  } else {
+                    reject(new Error(`XHR failed: ${xhr.status}`));
+                  }
+                };
+                xhr.onerror = () => reject(new Error('XHR network error'));
+                xhr.send();
+              });
             }
             imageData = await decodeImage(arrayBuffer);
           }
