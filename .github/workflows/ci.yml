@@ -58,13 +58,13 @@ jobs:
           rm -rf dist/obsidian-wasm-ocr/models
 
       - name: Archive Plugin Code (No Models)
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: obsidian-wasm-ocr
           path: dist/obsidian-wasm-ocr/
 
       - name: Archive OCR Models
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ocr-models
           path: assets/models/
